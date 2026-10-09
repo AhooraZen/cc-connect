@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag Name (e.g. v1.5.1)'
+        required: true
+        default: 'v1.5.1'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Binary (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            artifact_name: cc-connect-linux-amd64
+          - goos: linux
+            goarch: arm64
+            artifact_name: cc-connect-linux-arm64
+          - goos: darwin
+            goarch: arm64
+            artifact_name: cc-connect-darwin-arm64
+          - goos: darwin
+            goarch: amd64
+            artifact_name: cc-connect-darwin-amd64
+          - goos: windows
+            goarch: amd64
+            artifact_name: cc-connect-windows-amd64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Build web assets
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build static binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p build_out
+          BIN_PATH="build_out/cc-connect"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BIN_PATH="build_out/cc-connect.exe"
+          fi
+          go build -trimpath -ldflags "-s -w" -o "$BIN_PATH" ./cmd/cc-connect
+
+          cd build_out
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip "${{ matrix.artifact_name }}.zip" cc-connect.exe
+          else
+            tar -czvf "${{ matrix.artifact_name }}.tar.gz" cc-connect
+          fi
+          cd ..
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: build_out/*.*
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+          merge-multiple: true
+
+      - name: Generate Checksums
+        working-directory: release_assets
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          ls -la
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          name: Release ${{ github.event.inputs.tag_name || github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            release_assets/*
+          generate_release_notes: true
