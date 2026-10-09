@@ -1100,7 +1100,7 @@ func (p *Platform) sendRichMessage(ctx context.Context, chatID any, threadID int
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1160,7 +1160,7 @@ func (p *Platform) editRichMessage(ctx context.Context, chatID any, messageID in
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

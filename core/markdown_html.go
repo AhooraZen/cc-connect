@@ -113,13 +113,8 @@ func MarkdownToSimpleHTML(md string) string {
 				rows = append(rows, row{isSep: true})
 				continue
 			}
-			inner := tl
-			if strings.HasPrefix(inner, "|") {
-				inner = inner[1:]
-			}
-			if strings.HasSuffix(inner, "|") {
-				inner = inner[:len(inner)-1]
-			}
+			inner := strings.TrimPrefix(tl, "|")
+			inner = strings.TrimSuffix(inner, "|")
 			cells := strings.Split(inner, "|")
 			for k := range cells {
 				cells[k] = strings.TrimSpace(cells[k])
@@ -593,11 +588,7 @@ func FormatSmartTelegramRichMarkdown(text string, minCollapseLength ...int) stri
 		header = first
 		bodyLines = nonEmpty[1:]
 	} else {
-		if IsRTL(trimmed) {
-			header = "توضیحات و جزئیات پاسخ"
-		} else {
-			header = "Detailed Response"
-		}
+		header = "Details"
 		bodyLines = nonEmpty
 	}
 

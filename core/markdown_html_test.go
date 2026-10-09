@@ -733,12 +733,12 @@ func TestMarkdownToSimpleHTML_TableWithoutBoundaryPipes(t *testing.T) {
 }
 
 func TestMarkdownToSimpleHTML_TableColonAlignment(t *testing.T) {
-	in := "بخش / مسیر | حجم | محتوا\n:--- | :--- | :---\n~/.local/bin | 1.49 GiB | باینری‌های claude\n~/.bun | 1010 MiB | پکیج‌ها"
+	in := "Directory | Size | Usage\n:--- | :--- | :---\n~/.local/bin | 1.49 GiB | Binaries\n~/.bun | 1010 MiB | Packages"
 	out := MarkdownToSimpleHTML(in)
 	if !strings.Contains(out, "<pre>") || !strings.Contains(out, "</pre>") {
 		t.Fatalf("expected <pre> table wrapping, got %q", out)
 	}
-	if !strings.Contains(out, "بخش / مسیر") || !strings.Contains(out, "باینری‌های claude") {
-		t.Fatalf("expected Persian table cells, got %q", out)
+	if !strings.Contains(out, "Directory") || !strings.Contains(out, "Binaries") {
+		t.Fatalf("expected table cells, got %q", out)
 	}
 }
